@@ -512,32 +512,38 @@ def process_jagan_mis(df):
         return pd.DataFrame({'Error': ['Status (Ticket) column not found']})
     
     # Filter open tickets with all specified statuses
-    open_statuses = [
-        'Assigned to Engineer!',
-        'Reopened',
-        'Waiting Information From user - 1',
-        'Waiting Information From user - 2',
-        'Waiting Information From user - 3'
-    ]
-    open_tickets = df[df['Status (Ticket)'].isin(open_statuses)].copy()
-    
-    # Only exclude tickets that are in waiting status AND classified as 'request open'
-    waiting_statuses = [
-        'Waiting Information From user - 1',
-        'Waiting Information From user - 2',
-        'Waiting Information From user - 3'
-    ]
-    
-    if 'Classifications' in open_tickets.columns:
-        # Remove tickets that are both in waiting status AND classified as request open
-        exclude_condition = (
-            open_tickets['Status (Ticket)'].isin(waiting_statuses) & 
-            (open_tickets['Classifications'].str.lower().str.contains('request open', na=False))
-        )
-        open_tickets = open_tickets[~exclude_condition]
-    
-    if open_tickets.empty:
-        return pd.DataFrame({'Error': ['No open tickets found']})
+   # Ensure consistent casing and trim spaces
+df['Status (Ticket)'] = df['Status (Ticket)'].str.strip().str.lower()
+
+# Define open statuses
+open_statuses = [
+    'assigned to engineer!',
+    'reopened',
+    'waiting information from user - 1',
+    'waiting information from user - 2',
+    'waiting information from user - 3'
+]
+open_tickets = df[df['Status (Ticket)'].isin(open_statuses)].copy()
+
+# Waiting statuses
+waiting_statuses = [
+    'waiting information from user - 1',
+    'waiting information from user - 2',
+    'waiting information from user - 3'
+]
+
+# Apply exclude rule
+if 'Classifications' in open_tickets.columns:
+    open_tickets['Classifications'] = open_tickets['Classifications'].str.strip().str.lower()
+    exclude_condition = (
+        open_tickets['Status (Ticket)'].isin(waiting_statuses) &
+        (open_tickets['Classifications'] == 'request open')
+    )
+    open_tickets = open_tickets[~exclude_condition]
+
+if open_tickets.empty:
+    return pd.DataFrame({'Error': ['No open tickets found']})
+
     
     # Calculate days from creation
     today_date = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
