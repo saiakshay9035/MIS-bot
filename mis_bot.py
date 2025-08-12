@@ -275,20 +275,48 @@ def process_client_mis(df):
         final_report.append([''])
         
         # 2. Open Tickets Section
-        final_report.append([f'{program} - Open Tickets:'])
+               final_report.append([f'{program} - Open Tickets:'])
         final_report.append([''])
-        open_statuses = ['Assigned to Engineer!', 'Reopened', 'Waiting Information From user - 1', 'Waiting Information From user - 2', 'Waiting Information From user - 3']
-        open_tickets = program_df[program_df['Status (Ticket)'].isin(open_statuses)]
-        
+
+        # Ensure consistent casing and trim spaces
+        program_df['Status (Ticket)'] = program_df['Status (Ticket)'].str.strip().str.lower()
+
+        # Define open statuses (lowercase)
+        open_statuses = [
+            'assigned to engineer!',
+            'reopened',
+            'waiting information from user - 1',
+            'waiting information from user - 2',
+            'waiting information from user - 3'
+        ]
+        open_tickets = program_df[program_df['Status (Ticket)'].isin(open_statuses)].copy()
+
+        # Waiting statuses (lowercase)
+        waiting_statuses = [
+            'waiting information from user - 1',
+            'waiting information from user - 2',
+            'waiting information from user - 3'
+        ]
+
+        # Apply exclude rule if Classifications exists
+        if 'Classifications' in open_tickets.columns:
+            open_tickets['Classifications'] = open_tickets['Classifications'].str.strip().str.lower()
+            exclude_condition = (
+                open_tickets['Status (Ticket)'].isin(waiting_statuses) &
+                (open_tickets['Classifications'] == 'request open')
+            )
+            open_tickets = open_tickets[~exclude_condition]
+
         if not open_tickets.empty:
             open_report = generate_client_open_report(open_tickets, program)
             final_report.extend(open_report.values.tolist())
         else:
             final_report.append(['Client Name', 'Open tickets within SLA', 'Open Tickets Crossed SLA', 'Total Open Tickets', 'Within SLA%', 'Crossed SLA%'])
             final_report.append([program, 0, 0, 0, '0%', '0%'])
-        
+
         final_report.append([''])
         final_report.append([''])
+
         
         # 3. Request Tickets Section
         final_report.append([f'{program} - Request Tickets:'])
