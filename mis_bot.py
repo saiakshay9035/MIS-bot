@@ -1478,11 +1478,14 @@ def process_open_ticket_mis(df):
     Process Open Ticket MIS to generate Module Lead, Client, and Engineer wise reports.
     Applies rule: Waiting for Info tickets are considered Open unless classified as 'Request Open'.
     """
-    # Check if 'Status (Ticket)' column exists
+       import datetime
+    import pandas as pd
+
+    # Validate required column
     if 'Status (Ticket)' not in df.columns:
         return pd.DataFrame({'Error': ['Status (Ticket) column not found']})
 
-    # Normalize Status casing and trim spaces
+    # Normalize casing
     df['Status (Ticket)'] = df['Status (Ticket)'].astype(str).str.strip().str.lower()
 
     # Define open statuses (lowercase)
@@ -1495,14 +1498,14 @@ def process_open_ticket_mis(df):
     ]
     open_tickets = df[df['Status (Ticket)'].isin(open_statuses)].copy()
 
-    # Define waiting statuses (lowercase)
+    # Define waiting statuses
     waiting_statuses = [
         'waiting information from user - 1',
         'waiting information from user - 2',
         'waiting information from user - 3'
     ]
 
-    # Apply exclude rule if Classifications column exists
+    # Exclude if 'request open'
     if 'Classifications' in open_tickets.columns:
         open_tickets['Classifications'] = open_tickets['Classifications'].astype(str).str.strip().str.lower()
         exclude_condition = (
@@ -1514,7 +1517,42 @@ def process_open_ticket_mis(df):
     if open_tickets.empty:
         return pd.DataFrame({'Error': ['No open tickets found']})
 
-    return open_tickets
+    # Calculate SLA status
+    today_date = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+
+    def calculate_sla_status(row):
+        if 'Gitlab Due date' in open_tickets.columns and pd.notna(row.get('Gitlab Due date')):
+            gitlab_due = pd.to_datetime(row['Gitlab Due date'], errors='coerce')
+            if pd.notna(gitlab_due):
+                return 'Crossed SLA' if today_date.date() > gitlab_due.date() else 'Within SLA'
+        return 'Crossed SLA' if row.get('Is Overdue') is True else 'Within SLA'
+
+    open_tickets['SLA_Status'] = open_tickets.apply(calculate_sla_status, axis=1)
+
+    # Sort by created date
+    if 'Created Time (Ticket)' in open_tickets.columns:
+        open_tickets['Created_Date_Sort'] = pd.to_datetime(open_tickets['Created Time (Ticket)'], errors='coerce')
+        open_tickets = open_tickets.sort_values('Created_Date_Sort', ascending=True)
+        open_tickets.drop('Created_Date_Sort', axis=1, inplace=True)
+
+    # Generate reports
+    module_lead_report = generate_module_lead_report(open_tickets)
+    client_report = generate_client_report(open_tickets)
+    engineer_report = generate_engineer_report(open_tickets)
+
+    # Combine reports into one DataFrame for export
+    final_report = []
+    final_report.append(['MODULE LEAD WISE REPORT'])
+    final_report.extend(module_lead_report.values.tolist())
+    final_report.append([''])
+    final_report.append(['CLIENT WISE REPORT'])
+    final_report.extend(client_report.values.tolist())
+    final_report.append([''])
+    final_report.append(['ENGINEER WISE REPORT'])
+    final_report.extend(engineer_report.values.tolist())
+
+    return pd.DataFrame(final_report)
+
 
     # Calculate SLA status based on GitLab due date
     import datetime
