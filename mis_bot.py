@@ -275,7 +275,7 @@ def process_client_mis(df):
         final_report.append([''])
         
         # 2. Open Tickets Section
-               final_report.append([f'{program} - Open Tickets:'])
+        final_report.append([f'{program} - Open Tickets:'])
         final_report.append([''])
 
         # Ensure consistent casing and trim spaces
