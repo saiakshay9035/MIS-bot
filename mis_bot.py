@@ -1478,7 +1478,7 @@ def process_open_ticket_mis(df):
     Process Open Ticket MIS to generate Module Lead, Client, and Engineer wise reports.
     Applies rule: Waiting for Info tickets are considered Open unless classified as 'Request Open'.
     """
-       import datetime
+    import datetime
     import pandas as pd
 
     # Validate required column
