@@ -328,16 +328,16 @@ def process_client_mis(df):
         open_statuses = ['Assigned to Engineer!', 'Reopened', 'Waiting Information From user - 1', 'Waiting Information From user - 2', 'Waiting Information From user - 3']
         open_data = base_raw_data[base_raw_data['Status (Ticket)'].isin(open_statuses)].copy()
         
-        # Filter request tickets based on Classifications column, excluding closed ones
+        # Filter request tickets based on Classifications column, excluding only 'Closed - Marked as request'
         if 'Classifications' in program_df_mapped.columns:
             request_filter = (
                 program_df_mapped['Classifications'].str.lower().str.contains('request', na=False) &
-                (~program_df_mapped['Status (Ticket)'].isin(['Closed', 'Closed - Marked as request']))
+                (program_df_mapped['Status (Ticket)'] != 'Closed - Marked as request')
             )
             request_data = base_raw_data[request_filter].copy()
         else:
-            # If no Classifications column, exclude closed tickets
-            request_data = base_raw_data[~base_raw_data['Status (Ticket)'].isin(['Closed', 'Closed - Marked as request'])].copy()
+            # If no Classifications column, exclude only 'Closed - Marked as request'
+            request_data = base_raw_data[base_raw_data['Status (Ticket)'] != 'Closed - Marked as request'].copy()
         
         program_reports[program] = {
             'mis_report': pd.DataFrame(final_report),
@@ -1431,9 +1431,9 @@ def generate_client_request_report(program_df, program):
         request_tickets = program_df
     
     # Use program name as client name and aggregate all request tickets
-    # Exclude closed tickets marked as request status
-    request_tickets_filtered = request_tickets[~request_tickets['Status (Ticket)'].isin(['Closed', 'Closed - Marked as request'])]
-    closed_count = 0  # Ignore closed request tickets
+    # Exclude only 'Closed - Marked as request' status
+    request_tickets_filtered = request_tickets[request_tickets['Status (Ticket)'] != 'Closed - Marked as request']
+    closed_count = len(request_tickets_filtered[request_tickets_filtered['Status (Ticket)'] == 'Closed'])
     open_statuses = ['Assigned to Engineer!', 'Reopened', 'Waiting Information From user - 1', 'Waiting Information From user - 2', 'Waiting Information From user - 3']
     open_count = len(request_tickets_filtered[request_tickets_filtered['Status (Ticket)'].isin(open_statuses)])
     total = closed_count + open_count
@@ -1684,8 +1684,8 @@ def process_request_ticket_open_mis(df):
     if not any(col in df.columns for col in required_cols):
         return pd.DataFrame({'Error': ['Created Time column not found']})
     
-    # Create a copy of the dataframe
-    result_df = df.copy()
+    # Create a copy of the dataframe and exclude only 'Closed - Marked as request' tickets
+    result_df = df[df['Status (Ticket)'] != 'Closed - Marked as request'].copy()
     
     # Add today's date as datetime (matching expected format)
     today_date = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
@@ -1740,6 +1740,9 @@ def process_request_ticket_open_mis(df):
     # Keep only columns that exist and match expected order
     available_columns = [col for col in expected_columns if col in result_df.columns]
     result_df = result_df[available_columns]
+    
+    # Final filter to ensure no 'Closed - Marked as request' tickets remain
+    result_df = result_df[result_df['Status (Ticket)'] != 'Closed - Marked as request']
     
     # Generate MIS summary
     mis_summary = generate_request_ticket_mis_summary(result_df)
