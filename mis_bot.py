@@ -328,13 +328,16 @@ def process_client_mis(df):
         open_statuses = ['Assigned to Engineer!', 'Reopened', 'Waiting Information From user - 1', 'Waiting Information From user - 2', 'Waiting Information From user - 3']
         open_data = base_raw_data[base_raw_data['Status (Ticket)'].isin(open_statuses)].copy()
         
-        # Filter request tickets based on Classifications column
+        # Filter request tickets based on Classifications column, excluding closed ones
         if 'Classifications' in program_df_mapped.columns:
-            request_filter = program_df_mapped['Classifications'].str.lower().str.contains('request', na=False)
+            request_filter = (
+                program_df_mapped['Classifications'].str.lower().str.contains('request', na=False) &
+                (program_df_mapped['Status (Ticket)'] != 'Closed')
+            )
             request_data = base_raw_data[request_filter].copy()
         else:
-            # If no Classifications column, assume all are request tickets
-            request_data = base_raw_data.copy()
+            # If no Classifications column, exclude closed tickets
+            request_data = base_raw_data[base_raw_data['Status (Ticket)'] != 'Closed'].copy()
         
         program_reports[program] = {
             'mis_report': pd.DataFrame(final_report),
@@ -1428,9 +1431,11 @@ def generate_client_request_report(program_df, program):
         request_tickets = program_df
     
     # Use program name as client name and aggregate all request tickets
-    closed_count = len(request_tickets[request_tickets['Status (Ticket)'] == 'Closed'])
+    # Exclude closed tickets marked as request status
+    request_tickets_filtered = request_tickets[request_tickets['Status (Ticket)'] != 'Closed']
+    closed_count = 0  # Ignore closed request tickets
     open_statuses = ['Assigned to Engineer!', 'Reopened', 'Waiting Information From user - 1', 'Waiting Information From user - 2', 'Waiting Information From user - 3']
-    open_count = len(request_tickets[request_tickets['Status (Ticket)'].isin(open_statuses)])
+    open_count = len(request_tickets_filtered[request_tickets_filtered['Status (Ticket)'].isin(open_statuses)])
     total = closed_count + open_count
     
     result.append([program, closed_count, open_count, total])
