@@ -332,12 +332,12 @@ def process_client_mis(df):
         if 'Classifications' in program_df_mapped.columns:
             request_filter = (
                 program_df_mapped['Classifications'].str.lower().str.contains('request', na=False) &
-                (program_df_mapped['Status (Ticket)'] != 'Closed')
+                (~program_df_mapped['Status (Ticket)'].isin(['Closed', 'Closed - Marked as request']))
             )
             request_data = base_raw_data[request_filter].copy()
         else:
             # If no Classifications column, exclude closed tickets
-            request_data = base_raw_data[base_raw_data['Status (Ticket)'] != 'Closed'].copy()
+            request_data = base_raw_data[~base_raw_data['Status (Ticket)'].isin(['Closed', 'Closed - Marked as request'])].copy()
         
         program_reports[program] = {
             'mis_report': pd.DataFrame(final_report),
@@ -1432,7 +1432,7 @@ def generate_client_request_report(program_df, program):
     
     # Use program name as client name and aggregate all request tickets
     # Exclude closed tickets marked as request status
-    request_tickets_filtered = request_tickets[request_tickets['Status (Ticket)'] != 'Closed']
+    request_tickets_filtered = request_tickets[~request_tickets['Status (Ticket)'].isin(['Closed', 'Closed - Marked as request'])]
     closed_count = 0  # Ignore closed request tickets
     open_statuses = ['Assigned to Engineer!', 'Reopened', 'Waiting Information From user - 1', 'Waiting Information From user - 2', 'Waiting Information From user - 3']
     open_count = len(request_tickets_filtered[request_tickets_filtered['Status (Ticket)'].isin(open_statuses)])
