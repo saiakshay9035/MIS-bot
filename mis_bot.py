@@ -242,8 +242,11 @@ def process_client_mis(df):
     program_reports = {}
     
     for program in programs:
-        # Filter data for this program only (already filtered for client tickets)
-        program_df = client_df[client_df['Program Name'] == program].copy()
+        # Filter data for this program only (already filtered for client tickets) and exclude CRs
+        program_df = client_df[
+            (client_df['Program Name'] == program) & 
+            (client_df['Status (Ticket)'] != 'Closed - Marked as request')
+        ].copy()
         
         if program_df.empty:
             continue
